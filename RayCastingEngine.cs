@@ -30,20 +30,25 @@ class RayCastingEngine {
 
                 if (0 <= x && x < Consts.GRID_COLS &&
                     0 <= y && y < Consts.GRID_ROWS) {
-                    grid[y, x] = !grid[y, x];
+
+                    if (grid[y, x] == -1) grid[y, x] = 1;
+                    else if (grid[y, x] == 1) grid[y, x] = -1;
                 }
             }
         };
 
         player = new Player();
         player.Position = new Vector2f(300.0f, 300.0f);
-        grid = new bool[Consts.GRID_ROWS, Consts.GRID_COLS];
+        grid = new int[Consts.GRID_ROWS, Consts.GRID_COLS];
 
         for (int y = 0; y < Consts.GRID_ROWS; ++y) {
             for (int x = 0; x < Consts.GRID_COLS; ++x) {
                 //for boundary blocks
                 if (x == 0 || y == 0 || x == Consts.GRID_COLS - 1 || y == Consts.GRID_ROWS -1) {
-                    grid[y, x] = true;
+                    grid[y, x] = 0;
+                }
+                else {
+                    grid[y, x] = -1;
                 }
             }
         }
@@ -80,25 +85,29 @@ class RayCastingEngine {
         var window = AssetManager.GetWindow();
         window.Clear();
 
-        const int MAX_RAYS = 100;
-        const float FOV = MathF.PI / 3.0f; //field of view (60 deg)
+        const int MAX_RAYS = 90;
+        const float FOV = MathF.PI / 2.0f;
 
         for (int i = 0; i < MAX_RAYS; ++i) {
 
             float angle = (-FOV / 2.0f) + FOV * i / MAX_RAYS; // calculate angle [-FOV / 2, +FOV / 2]
-            bool boundary = false; // if hit boundary
             float minDist = float.PositiveInfinity;
             LineSegment closest = new LineSegment();
             Ray ray = new Ray(); //cast ray with angle
             ray.start = player.Position;
             ray.Angle = player.Angle + angle;
+            int hitBlock = 0; //hit block type
+            bool shading = false;
 
             //for each grid block
             for (int y = 0; y < Consts.GRID_ROWS; ++y) {
                 for (int x = 0; x < Consts.GRID_COLS; ++x) {
-                    if (grid[y, x]) { //if grid block is there
+                    if (grid[y, x] >= 0) { //if grid block is there
                         var segs = BlockToSegs(x, y);
-                        foreach (LineSegment s in segs) { //convert square into segments
+                        for(int k = 0; k < 4; ++k) { //convert square into segments
+
+                            LineSegment s = segs[k];
+
                             Vector2f point;
                             //if ray intersects with segment
                             if (ray.IntersectWithSegment(s, out point)) { 
@@ -109,16 +118,11 @@ class RayCastingEngine {
                                     //update minDist and hit point
                                     minDist = len;
                                     closest = temp;
-                                   
-                                    //if hit boundary 
-                                    if (x == 0 || y == 0 ||
-                                        x == Consts.GRID_COLS - 1 ||
-                                        y == Consts.GRID_ROWS - 1) {
-                                        boundary = true;
-                                    }
-                                    else {
-                                        boundary = false;
-                                    }
+
+                                    hitBlock = grid[y, x];
+
+                                    if (k > 1) shading = false; //shading based on ver / hor 
+                                    else shading = true;
                                 }
                             }
                         }
@@ -130,8 +134,8 @@ class RayCastingEngine {
             minDist *= MathF.Cos(angle); //correct fish eye effect by projecting parallel to player angle 
 
             //linehight max half of win height
-            float lineHeight = (Consts.BLOCK_SIZE * Consts.WIN_WIDTH / 2) / minDist;
-            if (lineHeight >= Consts.WIN_HEIGHT) lineHeight = Consts.WIN_HEIGHT / 2.0f;
+            float lineHeight = (Consts.BLOCK_SIZE * Consts.WIN_HEIGHT / 2) / minDist;
+            if (lineHeight >= Consts.WIN_HEIGHT / 2.0f) lineHeight = Consts.WIN_HEIGHT / 2.0f;
 
             float lineWidth = Consts.WIN_WIDTH / 2.0f / MAX_RAYS;
             float yOffset = Consts.WIN_HEIGHT - lineHeight / 2.0f; //shift lines to centre
@@ -139,8 +143,16 @@ class RayCastingEngine {
             RectangleShape pixLine = new RectangleShape(new Vector2f(lineWidth, lineHeight));
             pixLine.Position = new Vector2f(i * lineWidth + Consts.WIN_WIDTH / 2.0f, Consts.WIN_HEIGHT / 2.0f - lineHeight);
 
-            if (boundary) pixLine.FillColor = Color.Black; //for boundary, special color
-            else pixLine.FillColor = Color.Red;
+            Color pixColor = new Color();
+
+            if (hitBlock == 0) pixColor = Color.Blue; //for boundary, special color
+            else if (hitBlock == 1) pixColor = Color.Red;
+
+            if (shading) {
+                pixColor.R /= 3; pixColor.G /= 3; pixColor.B /= 3;
+            }
+
+            pixLine.FillColor = pixColor;
 
             window.Draw(pixLine);
         }
@@ -148,10 +160,23 @@ class RayCastingEngine {
         //draw 2d map
         for (int y = 0; y < Consts.GRID_ROWS; ++y) {
             for (int x = 0; x < Consts.GRID_COLS; ++x) {
-                if (grid[y, x]) {
+                if (grid[y, x] >= 0) {
                     RectangleShape rectangle = new RectangleShape(new Vector2f(Consts.BLOCK_SIZE, Consts.BLOCK_SIZE));
                     rectangle.Position = new Vector2f(x * Consts.BLOCK_SIZE, y * Consts.BLOCK_SIZE);
-                    rectangle.FillColor = Color.Red;
+
+                    switch (grid[y, x]) {
+                    case 0:
+                        rectangle.FillColor = Color.Blue;
+                        break;
+
+                    case 1:
+                        rectangle.FillColor = Color.Red;
+                        break;
+
+                    default:
+                        break;
+                    }
+
                     window.Draw(rectangle);
                 }
             }
@@ -175,12 +200,12 @@ class RayCastingEngine {
 
         return new LineSegment[] {
             new LineSegment(topLeft, topRight),
+            new LineSegment(botLeft, botRight),
             new LineSegment(topLeft, botLeft),
-            new LineSegment(topRight, botRight),
-            new LineSegment(botLeft, botRight)
+            new LineSegment(topRight, botRight)
         };
     }
 
     private Player player;
-    bool[,] grid; // the map as a grid
+    int[,] grid; // the map as a grid
 }

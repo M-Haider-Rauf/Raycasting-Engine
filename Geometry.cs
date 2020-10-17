@@ -60,6 +60,8 @@ struct Ray {
     // https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection#Given_two_points_on_each_line
     public bool IntersectWithSegment(LineSegment segment, out Vector2f point)
     {
+        point = new Vector2f(0.0f, 0.0f);
+
         //for ray
         float x1 = start.X;
         float y1 = start.Y;
@@ -73,8 +75,13 @@ struct Ray {
         float y4 = segment.end.Y;
 
         float den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+
+        if (MathF.Abs(den) < 0.01f) return false;
+
         float num1 = (x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4);
         float num2 = (x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3);
+
+       
 
         float t1 = num1 / den;
         float t2 = -num2 / den;
@@ -97,7 +104,6 @@ struct Ray {
             return true;
         }
         else {
-            point = new Vector2f(0.0f, 0.0f);
             return false;
         }
     }
