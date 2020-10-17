@@ -86,7 +86,7 @@ class RayCastingEngine {
         window.Clear();
 
         const int MAX_RAYS = 90;
-        const float FOV = MathF.PI / 2.0f;
+        const float FOV = MathF.PI / 3.0f;
 
         for (int i = 0; i < MAX_RAYS; ++i) {
 
@@ -131,23 +131,24 @@ class RayCastingEngine {
             }
 
             closest.Draw(Color.Yellow); //draw ray
-            minDist *= MathF.Cos(angle); //correct fish eye effect by projecting parallel to player angle 
+            minDist *= MathF.Cos(angle); //correct fish eye effect by projecting parallel to player angle
 
             //linehight max half of win height
-            float lineHeight = (Consts.BLOCK_SIZE * Consts.WIN_HEIGHT / 2) / minDist;
-            if (lineHeight >= Consts.WIN_HEIGHT / 2.0f) lineHeight = Consts.WIN_HEIGHT / 2.0f;
+            float lineHeight = (Consts.WIN_HEIGHT / minDist) * 25.0f;
+            if (lineHeight >= Consts.WIN_HEIGHT) lineHeight = Consts.WIN_HEIGHT;
 
             float lineWidth = Consts.WIN_WIDTH / 2.0f / MAX_RAYS;
             float yOffset = Consts.WIN_HEIGHT - lineHeight / 2.0f; //shift lines to centre
 
             RectangleShape pixLine = new RectangleShape(new Vector2f(lineWidth, lineHeight));
-            pixLine.Position = new Vector2f(i * lineWidth + Consts.WIN_WIDTH / 2.0f, Consts.WIN_HEIGHT / 2.0f - lineHeight);
+            pixLine.Position = new Vector2f(i * lineWidth + Consts.WIN_WIDTH / 2.0f, (Consts.WIN_HEIGHT - lineHeight) / 2.0f);
 
             Color pixColor = new Color();
 
             if (hitBlock == 0) pixColor = Color.Blue; //for boundary, special color
             else if (hitBlock == 1) pixColor = Color.Red;
 
+            //darken color shade
             if (shading) {
                 pixColor.R /= 3; pixColor.G /= 3; pixColor.B /= 3;
             }
