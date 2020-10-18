@@ -4,4 +4,4 @@ using raycasting to generate pseudo-3D worlds, A technique first used in Wofenst
 
 
 
-Here's a [demo](https://i.ibb.co/945ckRM/GIF-201017-182716.gif).
+Here's a [video](https://youtu.be/f_dMA2AdWT0) showing the working.
