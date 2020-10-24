@@ -82,17 +82,15 @@ struct Ray {
         float num2 = (x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3);
 
        
-
         float t1 = num1 / den;
         float t2 = -num2 / den;
 
 
 
-        /* t is the path parameter
-         * for ray, t =[0, inf) (infinite in one direction)
-         * for line segment t = [0, 1.0]
+        /*  t is the path parameter
+         *  for ray, t =[0, inf) (infinite in one direction)
+         *  for line segment t = [0, 1.0]
          */
-
 
 
         if (t1 >= 0.0f && (0.0f <= t2 && t2 <= 1.0f)) {

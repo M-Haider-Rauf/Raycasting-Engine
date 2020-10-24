@@ -4,10 +4,18 @@ using SFML.Graphics;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.ConstrainedExecution;
+
+//different block colors
 
 class RayCastingEngine {
 
     private static RayCastingEngine instance = null;
+    private static Color[] blockColors = {
+        new Color(), Color.Blue/*(wall color)*/,
+        Color.Red, Color.Magenta, 
+        //other colors
+    };
 
     public static RayCastingEngine GetInstance()
     {
@@ -28,27 +36,28 @@ class RayCastingEngine {
                 int x = args.X / Consts.BLOCK_SIZE; // calculate grid pos
                 int y = args.Y / Consts.BLOCK_SIZE;
 
-                if (0 <= x && x < Consts.GRID_COLS &&
-                    0 <= y && y < Consts.GRID_ROWS) {
-
-                    if (grid[y, x] == -1) grid[y, x] = 1;
-                    else if (grid[y, x] == 1) grid[y, x] = -1;
+                if (x > 0 && y > 0  && x < Consts.GRID_COLS - 1 && y < Consts.GRID_ROWS - 1) {
+                    ++grid[y, x];
                 }
+
+                if (grid[y, x] == blockColors.Length) grid[y, x] = 0;
+                else if (grid[y, x] == 1) ++grid[y, x];
             }
         };
 
         player = new Player();
         player.Position = new Vector2f(300.0f, 300.0f);
+
         grid = new int[Consts.GRID_ROWS, Consts.GRID_COLS];
 
         for (int y = 0; y < Consts.GRID_ROWS; ++y) {
             for (int x = 0; x < Consts.GRID_COLS; ++x) {
                 //for boundary blocks
                 if (x == 0 || y == 0 || x == Consts.GRID_COLS - 1 || y == Consts.GRID_ROWS -1) {
-                    grid[y, x] = 0;
+                    grid[y, x] = 1;
                 }
                 else {
-                    grid[y, x] = -1;
+                    grid[y, x] = 0;
                 }
             }
         }
@@ -72,11 +81,12 @@ class RayCastingEngine {
         else if (Keyboard.IsKeyPressed(Keyboard.Key.S)) {
             player.MoveBackward(1.0f);
         }
+
         if (Keyboard.IsKeyPressed(Keyboard.Key.A)) {
-            player.Turn(-0.05f);
+            player.Turn(-0.02f);
         }
         else if (Keyboard.IsKeyPressed(Keyboard.Key.D)) {
-            player.Turn(0.05f);
+            player.Turn(0.02f);
         }
     }
 
@@ -85,7 +95,18 @@ class RayCastingEngine {
         var window = AssetManager.GetWindow();
         window.Clear();
 
-        const int MAX_RAYS = 90;
+        // draw sky
+        RectangleShape bgScene = new RectangleShape(new Vector2f(Consts.WIN_WIDTH / 2, Consts.WIN_HEIGHT / 2));
+        bgScene.Position = new Vector2f(Consts.WIN_WIDTH / 2, 0.0f);
+        bgScene.FillColor = new Color(135, 206, 235);
+        window.Draw(bgScene);
+
+        //draw ground
+        bgScene.FillColor = new Color(124, 252, 0);
+        bgScene.Position = new Vector2f(Consts.WIN_WIDTH / 2, Consts.WIN_HEIGHT / 2);
+        window.Draw(bgScene);
+
+        const int MAX_RAYS = 120;
         const float FOV = MathF.PI / 3.0f;
 
         for (int i = 0; i < MAX_RAYS; ++i) {
@@ -102,7 +123,7 @@ class RayCastingEngine {
             //for each grid block
             for (int y = 0; y < Consts.GRID_ROWS; ++y) {
                 for (int x = 0; x < Consts.GRID_COLS; ++x) {
-                    if (grid[y, x] >= 0) { //if grid block is there
+                    if (grid[y, x] > 0) { //if grid block is there
                         var segs = BlockToSegs(x, y);
                         for(int k = 0; k < 4; ++k) { //convert square into segments
 
@@ -134,49 +155,33 @@ class RayCastingEngine {
             minDist *= MathF.Cos(angle); //correct fish eye effect by projecting parallel to player angle
 
             //linehight max half of win height
-            float lineHeight = (Consts.WIN_HEIGHT / minDist) * 25.0f;
+            float lineHeight = (Consts.WIN_HEIGHT / minDist) * Consts.BLOCK_SIZE * 0.9f;
             if (lineHeight >= Consts.WIN_HEIGHT) lineHeight = Consts.WIN_HEIGHT;
 
-            float lineWidth = Consts.WIN_WIDTH / 2.0f / MAX_RAYS;
+            int lineWidth = Consts.WIN_WIDTH / 2 / MAX_RAYS;
             float yOffset = Consts.WIN_HEIGHT - lineHeight / 2.0f; //shift lines to centre
 
             RectangleShape pixLine = new RectangleShape(new Vector2f(lineWidth, lineHeight));
             pixLine.Position = new Vector2f(i * lineWidth + Consts.WIN_WIDTH / 2.0f, (Consts.WIN_HEIGHT - lineHeight) / 2.0f);
 
-            Color pixColor = new Color();
-
-            if (hitBlock == 0) pixColor = Color.Blue; //for boundary, special color
-            else if (hitBlock == 1) pixColor = Color.Red;
+            Color pixColor = blockColors[hitBlock];
 
             //darken color shade
             if (shading) {
-                pixColor.R /= 3; pixColor.G /= 3; pixColor.B /= 3;
+                pixColor.R /= 2; pixColor.G /= 2; pixColor.B /= 2;
             }
 
             pixLine.FillColor = pixColor;
-
             window.Draw(pixLine);
         }
 
         //draw 2d map
         for (int y = 0; y < Consts.GRID_ROWS; ++y) {
             for (int x = 0; x < Consts.GRID_COLS; ++x) {
-                if (grid[y, x] >= 0) {
+                if (grid[y, x] > 0) {
                     RectangleShape rectangle = new RectangleShape(new Vector2f(Consts.BLOCK_SIZE, Consts.BLOCK_SIZE));
                     rectangle.Position = new Vector2f(x * Consts.BLOCK_SIZE, y * Consts.BLOCK_SIZE);
-
-                    switch (grid[y, x]) {
-                    case 0:
-                        rectangle.FillColor = Color.Blue;
-                        break;
-
-                    case 1:
-                        rectangle.FillColor = Color.Red;
-                        break;
-
-                    default:
-                        break;
-                    }
+                    rectangle.FillColor = blockColors[grid[y, x]];
 
                     window.Draw(rectangle);
                 }

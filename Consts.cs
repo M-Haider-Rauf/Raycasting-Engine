@@ -4,10 +4,11 @@ static class Consts {
     public const int WIN_WIDTH = 1200;
     public const int WIN_HEIGHT = 600;
 
-    public const int BLOCK_SIZE = 30;
+    public const int BLOCK_SIZE = 40;
 
     public const int GRID_COLS = WIN_WIDTH / 2 / BLOCK_SIZE;
     public const int GRID_ROWS = WIN_HEIGHT / BLOCK_SIZE;
 
     public const float PI_2 = MathF.PI * 2.0f;
+    public const float PI_BY_3 = MathF.PI / 3.0f;
 }
